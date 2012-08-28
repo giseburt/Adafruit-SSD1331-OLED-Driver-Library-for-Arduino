@@ -16,6 +16,12 @@
   BSD license, all text above must be included in any redistribution
  ****************************************************/
 
+//14,544 default, SPI
+//14,566 default, Software SPI
+
+//13,382 Motate, SPI
+//12,570 Motate, Software SPI
+
 
 // You can use any (4 or) 5 pins 
 #define sclk 13
@@ -35,18 +41,19 @@
 #define YELLOW          0xFFE0  
 #define WHITE           0xFFFF
 
+#include <MotatePins.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1331.h>
 #include <SPI.h>
 
 // Option 1: use any pins but a little slower
-Adafruit_SSD1331 display = Adafruit_SSD1331(cs, dc, mosi, sclk, rst);  
+Adafruit_SSD1331<cs, dc, mosi, sclk, rst> display;
 
 // Option 2: must use the hardware SPI pins 
 // (for UNO thats sclk = 13 and sid = 11) and pin 10 must be 
 // an output. This is much faster - also required if you want
 // to use the microSD card (see the image drawing example)
-//Adafruit_SSD1331 display = Adafruit_SSD1331(cs, dc, rst);
+//Adafruit_SSD1331<cs, dc, -1, -1, rst> display; 
 
 float p = 3.1415926;
 
@@ -63,8 +70,8 @@ void setup(void) {
   Serial.println(time, DEC);
   delay(500);
    
-  lcdTestPattern();
-  delay(1000);
+//  lcdTestPattern();
+//  delay(1000);
   
   display.fillScreen(BLACK);
   display.setCursor(0,0);

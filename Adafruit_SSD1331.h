@@ -12,6 +12,9 @@ products from Adafruit!
 
 Written by Limor Fried/Ladyada for Adafruit Industries.  
 BSD license, all text above must be included in any redistribution
+
+Rewritten by Rob Giseburt for speed and code size. - Aug 27, 2012
+
 ****************************************************/
 
 #ifndef ADAFRUIT_SSD1331_H
@@ -26,6 +29,9 @@ BSD license, all text above must be included in any redistribution
 #include "../Motate/MotatePins.h"
 using namespace Motate;
 
+// Ugly hack to prevent the need for include SPI.h from sketch
+// TODO: Test on Linux and Windows
+//#include <../../../../libraries/SPI/SPI.h>
 #include <SPI.h>
 
 // Select one of these defines to set the pixel color order
@@ -37,8 +43,8 @@ using namespace Motate;
 #endif
 
 // Timing Delays
-#define SSD1331_DELAYS_HWFILL		(3)
-#define SSD1331_DELAYS_HWLINE       (1)
+#define SSD1331_DELAYS_HWFILL		(1200)
+#define SSD1331_DELAYS_HWLINE		(500)
 
 // SSD1331 Commands
 #define SSD1331_CMD_DRAWLINE 		0x21
@@ -60,7 +66,7 @@ using namespace Motate;
 #define SSD1331_CMD_SETMULTIPLEX  	0xA8
 #define SSD1331_CMD_SETMASTER 		0xAD
 #define SSD1331_CMD_DISPLAYOFF 		0xAE
-#define SSD1331_CMD_DISPLAYON     	0xAF
+#define SSD1331_CMD_DISPLAYON		0xAF
 #define SSD1331_CMD_POWERMODE 		0xB0
 #define SSD1331_CMD_PRECHARGE 		0xB1
 #define SSD1331_CMD_CLOCKDIV 		0xB3
@@ -79,13 +85,27 @@ protected:
 	Pin<SID_num> _sid;
 	Pin<SCLK_num> _sclk;
 	Pin<RST_num> _rst;
+	PinHolder<SID_num, -1, -1, -1,  -1, -1, SCLK_num, -1> _sid_scl7;
+	PinHolder<-1, SID_num, -1, -1,  -1, -1, SCLK_num, -1> _sid_scl6;
+	PinHolder<-1, -1, SID_num, -1,  -1, -1, SCLK_num, -1> _sid_scl5;
+	PinHolder<-1, -1, -1,  SID_num, -1, -1, SCLK_num, -1> _sid_scl4;
+	PinHolder<-1, -1, -1, -1,  SID_num, -1, SCLK_num, -1> _sid_scl3;
+	PinHolder<-1, -1, -1, -1, -1,  SID_num, SCLK_num, -1> _sid_scl2;
+	PinHolder<-1, -1, -1, -1,  -1, -1, SID_num, SCLK_num> _sid_scl1;
+	PinHolder<-1, -1, -1, -1,  -1, -1, SCLK_num, SID_num> _sid_scl0;
+	// PinHolder<-1, -1, -1, -1,  -1, -1, SCLK_num, SID_num> _sid_scl;
 
 public:
-	Adafruit_SSD1331_Base() : _cs(Output), _rs(Output), _sid(Output), _sclk(Output), _rst(Output) {};
+	Adafruit_SSD1331_Base() : _cs(Output), _rs(Output), _sid(Output), _sclk(Output), _rst(Output) {
+		_sid = LOW;
+		_sclk = LOW;
+		_cs = HIGH;
+		pin7 = Output;
+		pin7 = LOW;
+	};
 
 	// commands
 	void begin2(void) {
-		// leave _cs LOW?
 		
 		// Toggle RST low to reset; CS low so it'll listen to us
 		_cs = LOW;
@@ -96,21 +116,55 @@ public:
 		delay(500);
 		_rst = HIGH;
 		delay(500);
+
+		// leave _cs LOW?
 	}
 
 	/* low level */
 
 protected:
 	void spiwrite(uint8_t c) {
-		// Use a do..while loop counting down to save space and time.
-		// Heheh, sounds like a Trek plot point.
-		uint8_t i = 7;
-		do {
-			_sclk = LOW;
-			_sid = (c & _BV(i));
-			_sclk = HIGH;
-		} while (i--);
-	}
+		// Unroll this loop:
+		// _sclk = LOW;
+		// _sid = (c & 1<<7);
+		_sid_scl7.set((c & 0b10000000));
+		_sclk = HIGH;
+
+		// _sclk = LOW;
+		// _sid = (c & 1<<6);
+		_sid_scl6.set((c & 0b01000000));
+		_sclk = HIGH;
+
+		// _sclk = LOW;
+		// _sid = (c & 1<<5);
+		_sid_scl5.set((c & 0b00100000));
+		_sclk = HIGH;
+
+		// _sclk = LOW;
+		// _sid = (c & 1<<4);
+		_sid_scl4.set((c & 0b00010000));
+		_sclk = HIGH;
+
+		// _sclk = LOW;
+		// _sid = (c & 1<<3);
+		_sid_scl3.set((c & 0b00001000));
+		_sclk = HIGH;
+
+		// _sclk = LOW;
+		// _sid = (c & 1<<2);
+		_sid_scl2.set((c & 0b00000100));
+		_sclk = HIGH;
+
+		// _sclk = LOW;
+		// _sid = (c & 1<<1);
+		_sid_scl1.set((c & 0b00000010));
+		_sclk = HIGH;
+		
+		// _sclk = LOW;
+		// _sid = (c & 1<<0);
+		_sid_scl0.set((c & 0b00000001));
+		_sclk = HIGH;
+	};
 };
 
 // Hardware SPI version version
@@ -162,8 +216,9 @@ public:
 	// drawing primitives!
 	void drawPixelImpl(int16_t x, int16_t y, uint16_t color);
 	void drawLineImpl(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color);
-	//void fillRectImpl(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t fillcolor);
-	void pushColorImpl(uint16_t c);
+	void fillRectImpl(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t fillcolor);
+	// void drawRectImpl(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
+	void pushColor(uint16_t c);
 
 	// commands
 	void init(void);
@@ -237,12 +292,12 @@ void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::drawPixelImpl
 }
 
 template<uint8_t CS_num, uint8_t RS_num, uint8_t SID_num, uint8_t SCLK_num, uint8_t RST_num>
-void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::pushColorImpl(uint16_t color) {
+void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::pushColor(uint16_t color) {
   // setup for data
   _rs = HIGH;
   _cs = LOW;
   
-  spiwrite(color >> 8);    
+  spiwrite(color >> 8);
   spiwrite(color);
   
   _cs = HIGH;
@@ -279,14 +334,80 @@ uint16_t Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::Color565(
   return c;
 }
 
+#if 0
 /**************************************************************************/
 /*! 
     @brief  Draws a filled rectangle using HW acceleration
 */
 /**************************************************************************/
-/*
+
 template<uint8_t CS_num, uint8_t RS_num, uint8_t SID_num, uint8_t SCLK_num, uint8_t RST_num>
-void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::fillRect(uint16_t x, uint16_t y, uint16_t w, uint16_t h, uint16_t fillcolor) 
+void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::drawRectImpl(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
+  switch (getRotation()) {
+  case 1:
+    swap(x, y);
+    swap(w, h);
+    x = WIDTH - x - 1;
+    break;
+  case 2:
+    x = WIDTH - x - 1;
+    y = HEIGHT - y - 1;
+    break;
+  case 3:
+    swap(x, y);
+    swap(w, h);
+    y = HEIGHT - y - 1;
+    break;
+  }
+
+  // Bounds check
+  if ((x >= TFTWIDTH) || (y >= TFTHEIGHT))
+	return;
+
+  // Y bounds check
+  if (y+h > TFTHEIGHT)
+  {
+    h = TFTHEIGHT - y;
+  }
+
+  // X bounds check
+  if (x+w > TFTWIDTH)
+  {
+    w = TFTWIDTH - x;
+  }
+
+  // Disable fill
+  writeCommand(SSD1331_CMD_FILL);
+  writeCommand(0x00);
+
+  writeCommand(SSD1331_CMD_DRAWRECT);
+  writeCommand(x & 0xFF);       // Starting column
+  writeCommand(y & 0xFF);       // Starting row
+  writeCommand((x+w-1) & 0xFF); // End column
+  writeCommand((y+h-1) & 0xFF); // End row
+
+  // Outline color
+  writeCommand((uint8_t)((color >> 11) << 1));
+  writeCommand((uint8_t)((color >> 5) & 0x3F));
+  writeCommand((uint8_t)((color << 1) & 0x3F));
+  // Fill color -- none
+  writeCommand(0x00);
+  writeCommand(0x00);
+  writeCommand(0x00);
+
+  // Delay while the fill completes
+  delayMicroseconds(SSD1331_DELAYS_HWFILL); 
+}
+#endif
+
+/**************************************************************************/
+/*! 
+    @brief  Draws a filled rectangle using HW acceleration
+*/
+/**************************************************************************/
+
+template<uint8_t CS_num, uint8_t RS_num, uint8_t SID_num, uint8_t SCLK_num, uint8_t RST_num>
+void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::fillRectImpl(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t fillcolor) 
 {
 //Serial.println("fillRect");
   // check rotation, move rect around if necessary
@@ -323,15 +444,15 @@ void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::fillRect(uint
     w = TFTWIDTH - x;
   }
   
-  // fill!
+  // Enable fill
   writeCommand(SSD1331_CMD_FILL);
   writeCommand(0x01);
 
   writeCommand(SSD1331_CMD_DRAWRECT);
-  writeCommand(x & 0xFF);							// Starting column
-  writeCommand(y & 0xFF);							// Starting row
-  writeCommand((x+w-1) & 0xFF);	// End column
-  writeCommand((y+h-1) & 0xFF);	// End row
+  writeCommand(x & 0xFF);       // Starting column
+  writeCommand(y & 0xFF);       // Starting row
+  writeCommand((x+w-1) & 0xFF); // End column
+  writeCommand((y+h-1) & 0xFF); // End row
   
   // Outline color
   writeCommand((uint8_t)((fillcolor >> 11) << 1));
@@ -343,9 +464,11 @@ void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::fillRect(uint
   writeCommand((uint8_t)((fillcolor << 1) & 0x3F));
  
   // Delay while the fill completes
-  delay(SSD1331_DELAYS_HWFILL); 
+  delayMicroseconds(SSD1331_DELAYS_HWFILL); 
+  // 
+  // writeCommand(SSD1331_CMD_FILL);
+  // writeCommand(0x00);
 }
-*/
 
 template<uint8_t CS_num, uint8_t RS_num, uint8_t SID_num, uint8_t SCLK_num, uint8_t RST_num>
 void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::drawLineImpl(int16_t x0, int16_t y0, int16_t x1, int16_t y1, uint16_t color) {	
@@ -390,11 +513,11 @@ void Adafruit_SSD1331<CS_num, RS_num, SID_num, SCLK_num, RST_num>::drawLineImpl(
   writeCommand(y0);
   writeCommand(x1);
   writeCommand(y1);
-  delay(SSD1331_DELAYS_HWLINE);  
+  // delayMicroseconds(SSD1331_DELAYS_HWLINE);
   writeCommand((uint8_t)((color >> 11) << 1));
   writeCommand((uint8_t)((color >> 5) & 0x3F));
   writeCommand((uint8_t)((color << 1) & 0x3F));
-  delay(SSD1331_DELAYS_HWLINE);  
+  delayMicroseconds(SSD1331_DELAYS_HWLINE);
 }
 
 template<uint8_t CS_num, uint8_t RS_num, uint8_t SID_num, uint8_t SCLK_num, uint8_t RST_num>

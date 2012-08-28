@@ -20,6 +20,7 @@
   Be sure to install it!
  ****************************************************/
 
+#include <MotatePins.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1331.h>
 #include <SD.h>
@@ -44,7 +45,8 @@
 #define WHITE           0xFFFF
 
 // to draw images from the SD card, we will share the hardware SPI interface
-Adafruit_SSD1331 tft = Adafruit_SSD1331(cs, dc, rst);  
+// Adafruit_SSD1331 tft = Adafruit_SSD1331(cs, dc, rst);  
+Adafruit_SSD1331<cs, dc, -1, -1, rst> display; 
 
 // For Arduino Uno/Duemilanove, etc
 //  connect the SD card with MOSI going to pin 11, MISO going to pin 12 and SCK going to pin 13 (standard)
