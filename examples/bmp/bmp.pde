@@ -46,7 +46,7 @@
 
 // to draw images from the SD card, we will share the hardware SPI interface
 // Adafruit_SSD1331 tft = Adafruit_SSD1331(cs, dc, rst);  
-Adafruit_SSD1331<cs, dc, -1, -1, rst> display; 
+Adafruit_SSD1331<cs, dc, -1, -1, rst> tft; 
 
 // For Arduino Uno/Duemilanove, etc
 //  connect the SD card with MOSI going to pin 11, MISO going to pin 12 and SCK going to pin 13 (standard)
@@ -163,9 +163,13 @@ void bmpDraw(char *filename, uint8_t x, uint8_t y) {
         h = bmpHeight;
         if((x+w-1) >= tft.width())  w = tft.width()  - x;
         if((y+h-1) >= tft.height()) h = tft.height() - y;
-
+        
+        bool reposEachLine = (tft.width() != w) || x != 0;
+        
+        tft.goTo(x, y);
         for (row=0; row<h; row++) { // For each scanline...
-          tft.goTo(x, y+row);
+          if (reposEachLine)
+            tft.goTo(x, y+row);
 
           // Seek to start of scan line.  It might seem labor-
           // intensive to be doing this on every line, but this
